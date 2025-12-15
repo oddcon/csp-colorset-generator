@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLS Color Set Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 10px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 1.8em;
+            font-weight: 600;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.85em;
+        }
+        
+        .upload-section {
+            margin-bottom: 30px;
+            padding: 30px;
+            background: #fafafa;
+            border: 2px dashed #d0d0d0;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .upload-section.dragover {
+            background: #e8f4f8;
+            border-color: #888;
+        }
+        
+        .upload-label {
+            display: block;
+            margin-bottom: 15px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        input[type="file"] {
+            padding: 10px;
+            border: 1px solid #d0d0d0;
+            border-radius: 3px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .info-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #fafafa;
+            border-radius: 3px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .info-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .section-title {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+            font-weight: 500;
+        }
+        
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .color-card {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            transition: transform 0.2s;
+            background: white;
+        }
+        
+        .color-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .color-swatch {
+            width: 100%;
+            aspect-ratio: 1;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .color-info {
+            padding: 10px;
+            background: #fafafa;
+        }
+        
+        .color-number {
+            font-size: 0.75em;
+            color: #999;
+            margin-bottom: 5px;
+        }
+        
+        .color-hex {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9em;
+            margin-bottom: 3px;
+        }
+        
+        .color-rgb {
+            font-size: 0.75em;
+            color: #666;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            color: #d0d0d0;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 3px;
+            font-size: 0.95em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #555;
+            color: white;
+            margin-top: 15px;
+        }
+        
+        .btn:hover {
+            background: #333;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .error-message {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 12px;
+            border-radius: 3px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .view-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .view-option {
+            padding: 8px 16px;
+            background: #fafafa;
+            border: 1px solid #d0d0d0;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+        
+        .view-option.active {
+            background: #555;
+            color: white;
+            border-color: #555;
+        }
+        
+        .color-list {
+            display: none;
+        }
+        
+        .color-list.active {
+            display: block;
+        }
+        
+        .color-list-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+            transition: background 0.2s;
+        }
+        
+        .color-list-item:hover {
+            background: #fafafa;
+        }
+        
+        .color-list-swatch {
+            width: 50px;
+            height: 50px;
+            border-radius: 3px;
+            border: 1px solid #d0d0d0;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        
+        .color-list-info {
+            flex: 1;
+        }
+        
+        .color-list-hex {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #333;
+            font-size: 1em;
+            margin-bottom: 3px;
+        }
+        
+        .color-list-rgb {
+            font-size: 0.85em;
+            color: #666;
+        }
+        
+        .copy-btn {
+            padding: 6px 12px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background 0.2s;
+        }
+        
+        .copy-btn:hover {
+            background: #d0d0d0;
+        }
+        
+        .copy-btn.copied {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 4px;
+            padding: 25px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .modal-section {
+            margin-bottom: 20px;
+        }
+        
+        .modal-label {
+            display: block;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+        }
+        
+        .modal-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #d0d0d0;
+            border-radius: 3px;
+            font-size: 0.95em;
+        }
+        
+        .modal-radio-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .modal-radio {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .modal-radio input[type="radio"] {
+            cursor: pointer;
+        }
+        
+        .modal-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .modal-checkbox input[type="checkbox"] {
+            cursor: pointer;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+        
+        .modal-buttons .btn {
+            flex: 1;
+            margin: 0;
+        }
+        
+        .btn-cancel {
+            background: #e0e0e0;
+            color: #555;
+        }
+        
+        .btn-cancel:hover {
+            background: #d0d0d0;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .color-grid {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+                gap: 10px;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CLS Color Set Viewer</h1>
+        <p class="subtitle">Upload and decode .cls color palette files from Clip Studio Paint</p>
+        
+        <div id="errorMessage" class="error-message"></div>
+        
+        <!-- Upload Section -->
+        <div class="upload-section" id="uploadSection">
+            <div class="empty-state-icon">📁</div>
+            <label class="upload-label">Choose a .cls file or drag and drop</label>
+            <input type="file" id="fileInput" accept=".cls" onchange="handleFileSelect(event)">
+        </div>
+        
+        <!-- Info Section -->
+        <div id="infoSection" style="display: none;">
+            <div class="info-section">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Palette Name</div>
+                        <div class="info-value" id="paletteName">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Total Colors</div>
+                        <div class="info-value" id="colorCount">-</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">File Size</div>
+                        <div class="info-value" id="fileSize">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- View Options -->
+            <div class="view-options">
+                <div class="view-option active" onclick="switchView('grid')">Grid View</div>
+                <div class="view-option" onclick="switchView('list')">List View</div>
+                <button class="btn" onclick="exportAsPNG()" style="margin: 0; margin-left: auto;">Export as PNG</button>
+            </div>
+            
+            <!-- Grid View -->
+            <div id="gridView" class="color-grid"></div>
+            
+            <!-- List View -->
+            <div id="listView" class="color-list"></div>
+            
+            <button class="btn" onclick="resetViewer()">Load Another File</button>
+        </div>
+        
+        <!-- Export Modal -->
+        <div id="exportModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-title">Export as PNG</div>
+                
+                <div class="modal-section">
+                    <label class="modal-label">Layout</label>
+                    <div class="modal-radio-group">
+                        <div class="modal-radio">
+                            <input type="radio" name="layout" value="grid" id="layoutGrid" checked>
+                            <label for="layoutGrid">Grid</label>
+                        </div>
+                        <div class="modal-radio">
+                            <input type="radio" name="layout" value="row" id="layoutRow">
+                            <label for="layoutRow">Single Row</label>
+                        </div>
+                        <div class="modal-radio">
+                            <input type="radio" name="layout" value="column" id="layoutColumn">
+                            <label for="layoutColumn">Single Column</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-section">
+                    <label class="modal-label">Swatch Size</label>
+                    <div class="modal-radio-group">
+                        <div class="modal-radio">
+                            <input type="radio" name="size" value="small" id="sizeSmall">
+                            <label for="sizeSmall">Small (64px)</label>
+                        </div>
+                        <div class="modal-radio">
+                            <input type="radio" name="size" value="medium" id="sizeMedium" checked>
+                            <label for="sizeMedium">Medium (128px)</label>
+                        </div>
+                        <div class="modal-radio">
+                            <input type="radio" name="size" value="large" id="sizeLarge">
+                            <label for="sizeLarge">Large (256px)</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-section">
+                    <label class="modal-label">Options</label>
+                    <div class="modal-checkbox">
+                        <input type="checkbox" id="showLabels" checked>
+                        <label for="showLabels">Show hex labels</label>
+                    </div>
+                    <div class="modal-checkbox">
+                        <input type="checkbox" id="showPaletteName" checked>
+                        <label for="showPaletteName">Show palette name</label>
+                    </div>
+                    <div class="modal-checkbox">
+                        <input type="checkbox" id="showBorders">
+                        <label for="showBorders">Show borders around swatches</label>
+                    </div>
+                </div>
+                
+                <div class="modal-buttons">
+                    <button class="btn btn-cancel" onclick="closeExportModal()">Cancel</button>
+                    <button class="btn" onclick="generatePNG()">Generate PNG</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentView = 'grid';
+        let currentColors = [];
+        
+        // Drag and drop handlers
+        const uploadSection = document.getElementById('uploadSection');
+        
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+        
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+        
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+        
+        function handleFile(file) {
+            // Check if it's a .cls file
+            if (!file.name.toLowerCase().endsWith('.cls')) {
+                showError('Please select a valid .cls file');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const arrayBuffer = e.target.result;
+                    const palette = decodeCLS(arrayBuffer);
+                    displayPalette(palette, file);
+                    hideError();
+                } catch (error) {
+                    showError('Error reading file: ' + error.message);
+                    console.error(error);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function decodeCLS(arrayBuffer) {
+            const data = new Uint8Array(arrayBuffer);
+            let offset = 0;
+            
+            // Helper functions
+            function readBytes(n) {
+                const bytes = data.slice(offset, offset + n);
+                offset += n;
+                return bytes;
+            }
+            
+            function readInt16() {
+                const value = data[offset] | (data[offset + 1] << 8);
+                offset += 2;
+                return value;
+            }
+            
+            function readInt32() {
+                const value = data[offset] | 
+                             (data[offset + 1] << 8) | 
+                             (data[offset + 2] << 16) | 
+                             (data[offset + 3] << 24);
+                offset += 4;
+                return value;
+            }
+            
+            function readString(length) {
+                const bytes = readBytes(length);
+                return new TextDecoder('utf-8').decode(bytes);
+            }
+            
+            // Read signature
+            const signature = String.fromCharCode(...readBytes(4));
+            if (signature !== 'SLCC') {
+                throw new Error('Invalid .cls file: wrong signature');
+            }
+            
+            const version = readInt16();
+            
+            // Read header
+            const headerLength = readInt32();
+            
+            // ASCII name
+            const asciiNameLength = readInt16();
+            const asciiName = readString(asciiNameLength);
+            
+            // Zero padding
+            readInt32();
+            
+            // UTF-8 name
+            const utf8NameLength = readInt16();
+            const utf8Name = readString(utf8NameLength);
+            
+            // Read color section
+            const channels = readInt32();
+            const colorCount = readInt32();
+            const colorsDataLength = readInt32();
+            
+            // Read colors
+            const colors = [];
+            for (let i = 0; i < colorCount; i++) {
+                const blockLength = readInt32();
+                const r = data[offset++];
+                const g = data[offset++];
+                const b = data[offset++];
+                const a = data[offset++];
+                const trailingZero = readInt32();
+                
+                colors.push({ r, g, b, a });
+            }
+            
+            return {
+                name: utf8Name || asciiName,
+                version: version,
+                colorCount: colors.length,
+                colors: colors
+            };
+        }
+        
+        function displayPalette(palette, file) {
+            currentColors = palette.colors;
+            
+            // Hide upload, show info
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('infoSection').style.display = 'block';
+            
+            // Update info
+            document.getElementById('paletteName').textContent = palette.name;
+            document.getElementById('colorCount').textContent = palette.colorCount;
+            document.getElementById('fileSize').textContent = formatFileSize(file.size);
+            
+            // Display colors
+            displayGridView(palette.colors);
+            displayListView(palette.colors);
+        }
+        
+        function displayGridView(colors) {
+            const grid = document.getElementById('gridView');
+            grid.innerHTML = colors.map((color, index) => {
+                const hex = rgbToHex(color.r, color.g, color.b);
+                return `
+                    <div class="color-card" onclick="copyToClipboard('${hex}', this)">
+                        <div class="color-swatch" style="background-color: ${hex};"></div>
+                        <div class="color-info">
+                            <div class="color-number">Color ${index + 1}</div>
+                            <div class="color-hex">${hex}</div>
+                            <div class="color-rgb">RGB(${color.r}, ${color.g}, ${color.b})</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function displayListView(colors) {
+            const list = document.getElementById('listView');
+            list.innerHTML = colors.map((color, index) => {
+                const hex = rgbToHex(color.r, color.g, color.b);
+                return `
+                    <div class="color-list-item">
+                        <div class="color-list-swatch" style="background-color: ${hex};"></div>
+                        <div class="color-list-info">
+                            <div class="color-number">Color ${index + 1}</div>
+                            <div class="color-list-hex">${hex}</div>
+                            <div class="color-list-rgb">RGB(${color.r}, ${color.g}, ${color.b}) • Alpha: ${color.a}</div>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('${hex}', this); event.stopPropagation();">Copy</button>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function switchView(view) {
+            currentView = view;
+            
+            // Update active state
+            document.querySelectorAll('.view-option').forEach(opt => {
+                opt.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Show/hide views
+            if (view === 'grid') {
+                document.getElementById('gridView').style.display = 'grid';
+                document.getElementById('listView').style.display = 'none';
+            } else {
+                document.getElementById('gridView').style.display = 'none';
+                document.getElementById('listView').style.display = 'block';
+            }
+        }
+        
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(x => {
+                const hex = x.toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('').toUpperCase();
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' bytes';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+        
+        function copyToClipboard(text, element) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Visual feedback
+                const originalText = element.textContent;
+                if (element.classList.contains('copy-btn')) {
+                    element.textContent = 'Copied!';
+                    element.classList.add('copied');
+                    setTimeout(() => {
+                        element.textContent = originalText;
+                        element.classList.remove('copied');
+                    }, 1500);
+                } else {
+                    // For color cards
+                    const card = element.closest('.color-card');
+                    const originalBorder = card.style.border;
+                    card.style.border = '2px solid #4caf50';
+                    setTimeout(() => {
+                        card.style.border = originalBorder;
+                    }, 500);
+                }
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+        
+        function resetViewer() {
+            document.getElementById('uploadSection').style.display = 'block';
+            document.getElementById('infoSection').style.display = 'none';
+            document.getElementById('fileInput').value = '';
+            document.getElementById('gridView').innerHTML = '';
+            document.getElementById('listView').innerHTML = '';
+            currentColors = [];
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+        
+        function exportAsPNG() {
+            document.getElementById('exportModal').classList.add('active');
+        }
+        
+        function closeExportModal() {
+            document.getElementById('exportModal').classList.remove('active');
+        }
+        
+        // Close modal on outside click
+        document.getElementById('exportModal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'exportModal') {
+                closeExportModal();
+            }
+        });
+        
+        function generatePNG() {
+            const layout = document.querySelector('input[name="layout"]:checked').value;
+            const size = document.querySelector('input[name="size"]:checked').value;
+            const showLabels = document.getElementById('showLabels').checked;
+            const showPaletteName = document.getElementById('showPaletteName').checked;
+            const showBorders = document.getElementById('showBorders').checked;
+            
+            const sizeMap = {
+                small: 64,
+                medium: 128,
+                large: 256
+            };
+            const swatchSize = sizeMap[size];
+            
+            // Create canvas
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Calculate dimensions
+            const colors = currentColors;
+            const colorsPerRow = layout === 'column' ? 1 : 
+                                 layout === 'row' ? colors.length : 
+                                 Math.ceil(Math.sqrt(colors.length));
+            const rows = Math.ceil(colors.length / colorsPerRow);
+            
+            const labelHeight = showLabels ? 30 : 0;
+            const titleHeight = showPaletteName ? 50 : 0;
+            const padding = 20;
+            
+            canvas.width = colorsPerRow * swatchSize + padding * 2;
+            canvas.height = rows * (swatchSize + labelHeight) + titleHeight + padding * 2;
+            
+            // Background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw title
+            if (showPaletteName) {
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 24px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(
+                    document.getElementById('paletteName').textContent, 
+                    canvas.width / 2, 
+                    padding + 30
+                );
+            }
+            
+            // Draw colors
+            colors.forEach((color, index) => {
+                const col = index % colorsPerRow;
+                const row = Math.floor(index / colorsPerRow);
+                
+                const x = padding + col * swatchSize;
+                const y = titleHeight + padding + row * (swatchSize + labelHeight);
+                
+                // Draw swatch
+                const hex = rgbToHex(color.r, color.g, color.b);
+                ctx.fillStyle = hex;
+                ctx.fillRect(x, y, swatchSize, swatchSize);
+                
+                // Draw border
+                if (showBorders) {
+                    ctx.strokeStyle = '#e0e0e0';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x, y, swatchSize, swatchSize);
+                }
+                
+                // Draw label
+                if (showLabels) {
+                    ctx.fillStyle = '#333';
+                    ctx.font = '14px "Courier New", monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(hex, x + swatchSize / 2, y + swatchSize + 20);
+                }
+            });
+            
+            // Download
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const paletteName = document.getElementById('paletteName').textContent;
+                a.download = paletteName.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_palette.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                closeExportModal();
+            });
+        }
+    </script>
+</body>
+</html>

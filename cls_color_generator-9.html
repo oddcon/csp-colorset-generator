@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLS Color Set Generator for Clip Studio Paint</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 10px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 1.8em;
+            font-weight: 600;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 0.85em;
+        }
+        
+        .section {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 1.1em;
+            color: #333;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e0e0e0;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 30px;
+            font-weight: 500;
+        }
+        
+        .section-title::after {
+            content: '▼';
+            position: absolute;
+            right: 0;
+            transition: transform 0.3s;
+            font-size: 0.8em;
+            color: #999;
+        }
+        
+        .section.collapsed .section-title::after {
+            transform: rotate(-90deg);
+        }
+        
+        .section.collapsed .section-content {
+            display: none;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+        
+        input[type="text"], input[type="color"], input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d0d0d0;
+            border-radius: 3px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+            background: white;
+        }
+        
+        input[type="text"]:focus, input[type="color"]:focus, input[type="file"]:focus {
+            outline: none;
+            border-color: #888;
+        }
+        
+        input[type="color"] {
+            height: 60px;
+            cursor: pointer;
+        }
+        
+        #imageCanvas {
+            transition: transform 0.1s ease;
+        }
+        
+        .color-inputs {
+            display: grid;
+            grid-template-columns: 1fr 70px;
+            gap: 8px;
+            align-items: end;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 3px;
+            font-size: 0.95em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #555;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #333;
+        }
+        
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #555;
+        }
+        
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+        
+        .btn-danger {
+            background: #d32f2f;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #b71c1c;
+        }
+        
+        .btn-success {
+            background: #333;
+            color: white;
+            width: 100%;
+            font-size: 1.2em;
+            padding: 16px;
+            margin-top: 20px;
+        }
+        
+        .btn-success:hover {
+            background: #000;
+        }
+        
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+            min-height: 100px;
+            padding: 20px;
+            background: #fafafa;
+            border-radius: 3px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .color-swatch {
+            aspect-ratio: 1;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+            border: 2px solid #e0e0e0;
+            transition: all 0.2s;
+        }
+        
+        .color-swatch:hover {
+            transform: scale(1.05);
+            border-color: #999;
+            z-index: 10;
+        }
+        
+        .color-swatch .remove-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 20px;
+            height: 20px;
+            background: #d32f2f;
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            font-size: 14px;
+            line-height: 16px;
+            text-align: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .color-swatch:hover .remove-btn {
+            opacity: 1;
+        }
+        
+        .color-info {
+            text-align: center;
+            margin-top: 5px;
+            font-size: 0.7em;
+            color: #666;
+            font-family: monospace;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+            font-size: 1.1em;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: #fafafa;
+            border-radius: 3px;
+            margin-bottom: 10px;
+            align-items: center;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.85em;
+            margin-top: 2px;
+        }
+        
+        .preset-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .preset-btn {
+            padding: 8px;
+            background: #fafafa;
+            border: 1px solid #d0d0d0;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+        
+        .preset-btn:hover {
+            background: #555;
+            color: white;
+            border-color: #555;
+        }
+        
+        .extracted-color {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border-radius: 3px;
+            margin: 5px;
+            cursor: pointer;
+            border: 1px solid #d0d0d0;
+            transition: transform 0.2s;
+        }
+        
+        .extracted-color:hover {
+            transform: scale(1.1);
+            border-color: #888;
+        }
+        
+        .extracted-color-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            padding: 15px;
+            background: #fafafa;
+            border-radius: 3px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .extraction-note {
+            background: #fff9e6;
+            border: 1px solid #e0d5a0;
+            border-radius: 3px;
+            padding: 10px;
+            margin-top: 10px;
+            color: #666;
+            font-size: 0.85em;
+        }
+        
+        .picked-color-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            padding: 6px 10px;
+            border-radius: 3px;
+            margin: 4px;
+            border: 1px solid #d0d0d0;
+            font-size: 0.85em;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+        
+        .picked-color-swatch {
+            width: 25px;
+            height: 25px;
+            border-radius: 3px;
+            border: 1px solid #d0d0d0;
+        }
+        
+        .picked-color-hex {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .recently-picked-grid {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            gap: 5px;
+            padding: 10px;
+            background: #fafafa;
+            border-radius: 3px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: #888 #f0f0f0;
+        }
+        
+        .recently-picked-grid::-webkit-scrollbar {
+            height: 8px;
+        }
+        
+        .recently-picked-grid::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-radius: 2px;
+        }
+        
+        .recently-picked-grid::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 2px;
+        }
+        
+        .recently-picked-grid::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+        
+        .recently-picked-section {
+            margin-top: 10px;
+            border: 1px solid #d0d0d0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .recently-picked-header {
+            background: #fafafa;
+            padding: 8px 12px;
+            cursor: pointer;
+            user-select: none;
+            font-weight: 500;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+        }
+        
+        .recently-picked-header::after {
+            content: '▼';
+            transition: transform 0.3s;
+            font-size: 0.8em;
+            color: #999;
+        }
+        
+        .recently-picked-section.collapsed .recently-picked-header::after {
+            transform: rotate(-90deg);
+        }
+        
+        .recently-picked-section.collapsed .recently-picked-grid {
+            display: none;
+        }
+        
+        .hex-input-group {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .hex-input-group input {
+            flex: 1;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 1.5em;
+            }
+            
+            .color-grid {
+                grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+            }
+            
+            .picked-color-item {
+                font-size: 0.75em;
+                padding: 4px 8px;
+                gap: 6px;
+            }
+            
+            .picked-color-swatch {
+                width: 20px;
+                height: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CLS Color Set Generator</h1>
+        <p class="subtitle">Create custom color palettes for Clip Studio Paint</p>
+        
+        <!-- Add Color -->
+        <div class="section">
+            <div class="section-title" onclick="toggleSection(this)">Add Colors</div>
+            <div class="section-content">
+                <div class="color-inputs">
+                    <div>
+                        <label for="colorPicker">Pick a Color</label>
+                        <input type="color" id="colorPicker" value="#667eea">
+                    </div>
+                    <div>
+                        <label>&nbsp;</label>
+                        <button class="btn btn-primary" onclick="addColorFromPicker()">Add</button>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <label for="hexInput">Or Enter Hex Code</label>
+                    <div class="hex-input-group">
+                        <input type="text" id="hexInput" placeholder="#667eea or 667eea">
+                        <button class="btn btn-primary" onclick="addColorFromHex()">Add</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Image Upload -->
+        <div class="section collapsed">
+            <div class="section-title" onclick="toggleSection(this)">Pick Colors from Image</div>
+            <div class="section-content">
+            
+            <div class="input-group">
+                <label for="imageUpload">Upload an Image</label>
+                <input type="file" id="imageUpload" accept="image/*" onchange="handleImageUpload(event)" style="padding: 10px;">
+            </div>
+            
+            <div id="imagePreview" style="display: none; margin-top: 15px;">
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <div class="extraction-note" style="display: inline-block; max-width: 600px;">
+                        <strong>Click anywhere on the image</strong> to pick that color and add it to your palette
+                    </div>
+                </div>
+                
+                <div style="position: relative; display: inline-block; max-width: 100%;">
+                    <canvas id="imageCanvas" 
+                            style="max-width: 100%; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: crosshair; border: 1px solid #e0e0e0;"
+                            onclick="pickColorFromImage(event)"></canvas>
+                    <div id="colorPreview" style="
+                        position: absolute;
+                        bottom: 10px;
+                        right: 10px;
+                        width: 50px;
+                        height: 50px;
+                        border: 2px solid white;
+                        border-radius: 3px;
+                        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+                        display: none;
+                        pointer-events: none;
+                    "></div>
+                </div>
+                
+                <div style="margin-top: 15px; text-align: center;">
+                    <button class="btn btn-secondary" onclick="clearImage()">
+                        Clear Image
+                    </button>
+                </div>
+                
+                <div id="recentlyPicked" style="margin-top: 15px;"></div>
+            </div>
+            </div>
+        </div>
+        
+        <!-- Presets -->
+        <div class="section collapsed">
+            <div class="section-title" onclick="toggleSection(this)">Quick Presets</div>
+            <div class="section-content">
+                <div class="preset-section">
+                    <button class="preset-btn" onclick="loadPreset('rainbow')">Rainbow</button>
+                    <button class="preset-btn" onclick="loadPreset('pastel')">Pastel</button>
+                    <button class="preset-btn" onclick="loadPreset('grayscale')">Grayscale</button>
+                    <button class="preset-btn" onclick="loadPreset('earth')">Earth Tones</button>
+                    <button class="preset-btn" onclick="loadPreset('neon')">Neon</button>
+                    <button class="preset-btn" onclick="loadPreset('skin')">Skin Tones</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Color Palette -->
+        <div class="section">
+            <div class="section-title">Your Palette</div>
+            
+            <!-- Palette Name - moved here -->
+            <div class="input-group" style="margin-bottom: 15px;">
+                <label for="paletteName">Palette Name</label>
+                <input type="text" id="paletteName" placeholder="My Custom Palette" value="My Custom Palette">
+            </div>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="colorCount">0</div>
+                    <div class="stat-label">Colors</div>
+                </div>
+                <div class="stat-item">
+                    <button class="btn btn-danger" onclick="clearPalette()">Clear All</button>
+                </div>
+            </div>
+            
+            <div class="color-grid" id="colorGrid">
+                <div class="empty-state">No colors added yet. Pick a color above!</div>
+            </div>
+        </div>
+        
+        <!-- Generate Button -->
+        <button class="btn btn-success" onclick="generateCLS()">Generate & Download .cls File</button>
+    </div>
+    
+    <script>
+        let colors = [];
+        let uploadedImage = null;
+        let pickedColors = [];
+        
+        function toggleSection(titleElement) {
+            const section = titleElement.parentElement;
+            section.classList.toggle('collapsed');
+        }
+        
+        function updateGrid() {
+            const grid = document.getElementById('colorGrid');
+            const countEl = document.getElementById('colorCount');
+            
+            countEl.textContent = colors.length;
+            
+            if (colors.length === 0) {
+                grid.innerHTML = '<div class="empty-state">No colors added yet. Pick a color above!</div>';
+                return;
+            }
+            
+            grid.innerHTML = colors.map((color, index) => `
+                <div>
+                    <div class="color-swatch" style="background-color: ${color};" 
+                         onclick="removeColor(${index})" title="Click to remove">
+                        <div class="remove-btn">×</div>
+                    </div>
+                    <div class="color-info">${color.toUpperCase()}</div>
+                </div>
+            `).join('');
+        }
+        
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    uploadedImage = img;
+                    displayImage(img);
+                    document.getElementById('imagePreview').style.display = 'block';
+                    pickedColors = [];
+                    updatePickedColors();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function displayImage(img) {
+            const canvas = document.getElementById('imageCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Scale image to fit canvas (max 800px wide)
+            const maxWidth = 800;
+            const scale = Math.min(maxWidth / img.width, 1);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+        
+        function pickColorFromImage(event) {
+            const canvas = document.getElementById('imageCanvas');
+            const ctx = canvas.getContext('2d');
+            const rect = canvas.getBoundingClientRect();
+            
+            // Calculate click position relative to canvas
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (event.clientX - rect.left) * scaleX;
+            const y = (event.clientY - rect.top) * scaleY;
+            
+            // Get pixel color
+            const pixel = ctx.getImageData(x, y, 1, 1).data;
+            const r = pixel[0];
+            const g = pixel[1];
+            const b = pixel[2];
+            const hex = rgbToHex(r, g, b);
+            
+            // Show color preview briefly
+            const preview = document.getElementById('colorPreview');
+            preview.style.backgroundColor = hex;
+            preview.style.display = 'block';
+            
+            // Add to palette
+            addColor(hex);
+            
+            // Track picked colors
+            pickedColors.unshift({ hex, r, g, b });
+            if (pickedColors.length > 10) pickedColors.pop();
+            updatePickedColors();
+            
+            // Visual feedback
+            canvas.style.transform = 'scale(0.98)';
+            setTimeout(() => {
+                canvas.style.transform = 'scale(1)';
+            }, 100);
+        }
+        
+        function updatePickedColors() {
+            const recentDiv = document.getElementById('recentlyPicked');
+            
+            if (pickedColors.length === 0) {
+                recentDiv.innerHTML = '';
+                return;
+            }
+            
+            recentDiv.innerHTML = `
+                <div class="recently-picked-section">
+                    <div class="recently-picked-header" onclick="toggleRecentlyPicked(this)">
+                        Recently Picked (${pickedColors.length})
+                    </div>
+                    <div class="recently-picked-grid">
+                        ${pickedColors.map(color => `
+                            <div class="picked-color-item">
+                                <div class="picked-color-swatch" style="background-color: ${color.hex};"></div>
+                                <div class="picked-color-hex">${color.hex}</div>
+                                <div style="font-size: 0.85em; color: #999; white-space: nowrap;">
+                                    RGB(${color.r}, ${color.g}, ${color.b})
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function toggleRecentlyPicked(headerElement) {
+            const section = headerElement.parentElement;
+            section.classList.toggle('collapsed');
+        }
+        
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(x => {
+                const hex = x.toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            }).join('');
+        }
+        
+        function clearImage() {
+            uploadedImage = null;
+            pickedColors = [];
+            document.getElementById('imageUpload').value = '';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('recentlyPicked').innerHTML = '';
+            document.getElementById('colorPreview').style.display = 'none';
+        }
+        
+        function addColor(hexColor) {
+            // Validate and normalize hex color
+            hexColor = hexColor.replace('#', '');
+            if (hexColor.length === 3) {
+                hexColor = hexColor.split('').map(c => c + c).join('');
+            }
+            if (!/^[0-9A-F]{6}$/i.test(hexColor)) {
+                alert('Invalid hex color format!');
+                return;
+            }
+            
+            const normalizedColor = '#' + hexColor.toUpperCase();
+            colors.push(normalizedColor);
+            updateGrid();
+        }
+        
+        function addColorFromPicker() {
+            const color = document.getElementById('colorPicker').value;
+            addColor(color);
+        }
+        
+        function addColorFromHex() {
+            const hex = document.getElementById('hexInput').value;
+            if (hex.trim()) {
+                addColor(hex);
+                document.getElementById('hexInput').value = '';
+            }
+        }
+        
+        function removeColor(index) {
+            colors.splice(index, 1);
+            updateGrid();
+        }
+        
+        function clearPalette() {
+            if (colors.length > 0 && confirm('Are you sure you want to clear all colors?')) {
+                colors = [];
+                updateGrid();
+            }
+        }
+        
+        function loadPreset(preset) {
+            const presets = {
+                rainbow: ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#9400D3'],
+                pastel: ['#FFB3BA', '#FFDFBA', '#FFFFBA', '#BAFFC9', '#BAE1FF', '#E0BBE4', '#FEC8D8'],
+                grayscale: ['#000000', '#404040', '#808080', '#BFBFBF', '#FFFFFF'],
+                earth: ['#8B4513', '#A0522D', '#D2691E', '#CD853F', '#DEB887', '#F5DEB3', '#FFF8DC'],
+                neon: ['#FF006E', '#FB5607', '#FFBE0B', '#8338EC', '#3A86FF', '#06FFA5', '#FF006E'],
+                skin: ['#FFDFC4', '#F0D5BE', '#EAC8AF', '#D8B5A4', '#C69C7B', '#A57257', '#83543F']
+            };
+            
+            if (confirm('Replace current palette with ' + preset + ' preset?')) {
+                colors = presets[preset] || [];
+                updateGrid();
+            }
+        }
+        
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+        
+        function generateCLS() {
+            if (colors.length === 0) {
+                alert('Please add at least one color first!');
+                return;
+            }
+            
+            const paletteName = document.getElementById('paletteName').value || 'Custom Palette';
+            
+            // Build .cls file according to spec
+            const buffer = [];
+            
+            // Helper functions
+            function writeBytes(arr) {
+                buffer.push(...arr);
+            }
+            
+            function writeInt16(val) {
+                buffer.push(val & 0xFF, (val >> 8) & 0xFF);
+            }
+            
+            function writeInt32(val) {
+                buffer.push(val & 0xFF, (val >> 8) & 0xFF, (val >> 16) & 0xFF, (val >> 24) & 0xFF);
+            }
+            
+            function writeString(str, encoding = 'utf-8') {
+                const encoder = new TextEncoder();
+                const bytes = encoder.encode(str);
+                return Array.from(bytes);
+            }
+            
+            // Signature
+            writeBytes([83, 76, 67, 67]); // 'SLCC'
+            writeInt16(256);
+            
+            // Header
+            const asciiName = writeString(paletteName);
+            const utf8Name = writeString(paletteName);
+            const headerLength = 2 + asciiName.length + 4 + 2 + utf8Name.length;
+            
+            writeInt32(headerLength);
+            writeInt16(asciiName.length);
+            writeBytes(asciiName);
+            writeInt32(0);
+            writeInt16(utf8Name.length);
+            writeBytes(utf8Name);
+            
+            // Colors section
+            writeInt32(4); // channels
+            writeInt32(colors.length);
+            const colorsDataLength = colors.length * 12;
+            writeInt32(colorsDataLength);
+            
+            // Write each color
+            for (const color of colors) {
+                const rgb = hexToRgb(color);
+                writeInt32(8); // block length
+                writeBytes([rgb.r, rgb.g, rgb.b, 255]); // RGBA
+                writeInt32(0); // trailing zero
+            }
+            
+            // Create blob and download
+            const blob = new Blob([new Uint8Array(buffer)], { type: 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = paletteName.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.cls';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            alert('Generated ' + paletteName + '.cls with ' + colors.length + ' colors!');
+        }
+        
+        // Allow Enter key in hex input
+        document.getElementById('hexInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addColorFromHex();
+            }
+        });
+        
+        // Initialize
+        updateGrid();
+    </script>
+</body>
+</html>

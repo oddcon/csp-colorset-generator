@@ -537,6 +537,47 @@
             </div>
         </div>
         
+        <!-- Expand Colors (Harmony) -->
+        <div class="section collapsed">
+            <div class="section-title" onclick="toggleSection(this)">Expand Colors</div>
+            <div class="section-content">
+                <div style="font-size: 0.85em; color: #666; margin-bottom: 12px;">
+                    Add colors that harmonize with what you already have. Works best when your palette has at least one color.
+                </div>
+                
+                <div class="input-group" style="margin-bottom: 10px;">
+                    <label for="harmonyType">Harmony Type</label>
+                    <select id="harmonyType" style="width: 100%; padding: 8px; border: 1px solid #d0d0d0; border-radius: 3px; font-family: inherit;">
+                        <option value="analogous">Analogous (neighbors on color wheel)</option>
+                        <option value="complementary">Complementary (opposite hues)</option>
+                        <option value="split">Split-Complementary</option>
+                        <option value="triadic">Triadic (3 equidistant hues)</option>
+                        <option value="tetradic">Tetradic (4 hues in rectangle)</option>
+                        <option value="tints">Tints (lighter versions)</option>
+                        <option value="shades">Shades (darker versions)</option>
+                        <option value="tones">Tones (desaturated versions)</option>
+                        <option value="monochrome">Monochrome (light + dark of each)</option>
+                        <option value="neutrals">Matching Neutrals</option>
+                    </select>
+                </div>
+                
+                <div class="input-group" style="margin-bottom: 12px;">
+                    <label for="harmonyCount">Colors to Add: <span id="harmonyCountValue">5</span></label>
+                    <input type="range" id="harmonyCount" min="1" max="20" value="5" style="width: 100%;" oninput="document.getElementById('harmonyCountValue').textContent = this.value; previewHarmony();">
+                </div>
+                
+                <div id="harmonyPreview" style="display: none; margin-bottom: 12px;">
+                    <div style="font-size: 0.85em; color: #666; margin-bottom: 6px;">Preview:</div>
+                    <div id="harmonyPreviewGrid" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+                </div>
+                
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="previewHarmony()">Preview</button>
+                    <button class="btn btn-success" onclick="applyHarmony()">Add to Palette</button>
+                </div>
+            </div>
+        </div>
+        
         <!-- Color Palette -->
         <div class="section">
             <div class="section-title">Your Palette</div>
@@ -756,6 +797,180 @@
                 colors = [];
                 updateGrid();
             }
+        }
+        
+        function hexToHsl(hex) {
+            hex = hex.replace('#', '');
+            const r = parseInt(hex.substring(0, 2), 16) / 255;
+            const g = parseInt(hex.substring(2, 4), 16) / 255;
+            const b = parseInt(hex.substring(4, 6), 16) / 255;
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            let h = 0, s = 0;
+            const l = (max + min) / 2;
+            if (max !== min) {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = ((g - b) / d + (g < b ? 6 : 0)) * 60; break;
+                    case g: h = ((b - r) / d + 2) * 60; break;
+                    case b: h = ((r - g) / d + 4) * 60; break;
+                }
+            }
+            return { h, s: s * 100, l: l * 100 };
+        }
+        
+        function hslToHex(h, s, l) {
+            h = ((h % 360) + 360) % 360;
+            s = Math.max(0, Math.min(100, s)) / 100;
+            l = Math.max(0, Math.min(100, l)) / 100;
+            const c = (1 - Math.abs(2 * l - 1)) * s;
+            const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+            const m = l - c / 2;
+            let r = 0, g = 0, b = 0;
+            if (h < 60) { r = c; g = x; b = 0; }
+            else if (h < 120) { r = x; g = c; b = 0; }
+            else if (h < 180) { r = 0; g = c; b = x; }
+            else if (h < 240) { r = 0; g = x; b = c; }
+            else if (h < 300) { r = x; g = 0; b = c; }
+            else { r = c; g = 0; b = x; }
+            const toHex = v => {
+                const n = Math.round((v + m) * 255);
+                return Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0');
+            };
+            return ('#' + toHex(r) + toHex(g) + toHex(b)).toUpperCase();
+        }
+        
+        function generateHarmonyColors(baseColors, type, count) {
+            if (baseColors.length === 0) return [];
+            const hsls = baseColors.map(hexToHsl);
+            const results = [];
+            const existing = new Set(baseColors.map(c => c.toUpperCase()));
+            
+            const push = (h, s, l) => {
+                const hex = hslToHex(h, s, l);
+                if (!existing.has(hex) && !results.includes(hex)) {
+                    results.push(hex);
+                    existing.add(hex);
+                }
+            };
+            
+            let idx = 0;
+            const next = () => hsls[idx++ % hsls.length];
+            
+            let safety = 0;
+            while (results.length < count && safety++ < count * 20) {
+                const base = next();
+                
+                switch (type) {
+                    case 'analogous': {
+                        const offset = 15 + (results.length % 3) * 15;
+                        const sign = results.length % 2 === 0 ? 1 : -1;
+                        push(base.h + offset * sign, base.s, base.l);
+                        break;
+                    }
+                    case 'complementary': {
+                        const lVariation = (results.length % 3 - 1) * 10;
+                        push(base.h + 180, base.s, Math.max(15, Math.min(85, base.l + lVariation)));
+                        break;
+                    }
+                    case 'split': {
+                        const offset = results.length % 2 === 0 ? 150 : 210;
+                        push(base.h + offset, base.s, base.l);
+                        break;
+                    }
+                    case 'triadic': {
+                        const offset = results.length % 2 === 0 ? 120 : 240;
+                        push(base.h + offset, base.s, base.l);
+                        break;
+                    }
+                    case 'tetradic': {
+                        const offsets = [60, 180, 240];
+                        push(base.h + offsets[results.length % 3], base.s, base.l);
+                        break;
+                    }
+                    case 'tints': {
+                        const step = results.length + 1;
+                        push(base.h, Math.max(10, base.s - step * 5), Math.min(95, base.l + step * 8));
+                        break;
+                    }
+                    case 'shades': {
+                        const step = results.length + 1;
+                        push(base.h, base.s, Math.max(5, base.l - step * 8));
+                        break;
+                    }
+                    case 'tones': {
+                        const step = results.length + 1;
+                        push(base.h, Math.max(5, base.s - step * 15), base.l);
+                        break;
+                    }
+                    case 'monochrome': {
+                        const step = Math.floor(results.length / 2) + 1;
+                        const lighter = results.length % 2 === 0;
+                        push(base.h, base.s, lighter 
+                            ? Math.min(95, base.l + step * 12) 
+                            : Math.max(5, base.l - step * 12));
+                        break;
+                    }
+                    case 'neutrals': {
+                        const avgHue = hsls.reduce((sum, c) => sum + c.h, 0) / hsls.length;
+                        const lightness = 15 + (results.length * (70 / Math.max(1, count - 1)));
+                        push(avgHue, 8, Math.min(90, lightness));
+                        break;
+                    }
+                }
+            }
+            
+            return results.slice(0, count);
+        }
+        
+        function previewHarmony() {
+            const type = document.getElementById('harmonyType').value;
+            const count = parseInt(document.getElementById('harmonyCount').value);
+            const preview = document.getElementById('harmonyPreview');
+            const grid = document.getElementById('harmonyPreviewGrid');
+            
+            if (colors.length === 0) {
+                alert('Add at least one color to your palette first.');
+                return;
+            }
+            
+            const newColors = generateHarmonyColors(colors, type, count);
+            
+            if (newColors.length === 0) {
+                preview.style.display = 'block';
+                grid.innerHTML = '<div style="color: #999; font-size: 0.85em;">No new colors generated. Try a different harmony type or add more base colors.</div>';
+                return;
+            }
+            
+            grid.innerHTML = newColors.map(c => `
+                <div style="text-align: center;">
+                    <div style="width: 44px; height: 44px; background: ${c}; border: 1px solid #d0d0d0; border-radius: 3px;"></div>
+                    <div style="font-size: 0.7em; font-family: 'Courier New', monospace; color: #666; margin-top: 3px;">${c}</div>
+                </div>
+            `).join('');
+            preview.style.display = 'block';
+        }
+        
+        function applyHarmony() {
+            const type = document.getElementById('harmonyType').value;
+            const count = parseInt(document.getElementById('harmonyCount').value);
+            
+            if (colors.length === 0) {
+                alert('Add at least one color to your palette first.');
+                return;
+            }
+            
+            const newColors = generateHarmonyColors(colors, type, count);
+            
+            if (newColors.length === 0) {
+                alert('No new colors could be generated. Try a different harmony type.');
+                return;
+            }
+            
+            colors.push(...newColors);
+            updateGrid();
+            document.getElementById('harmonyPreview').style.display = 'none';
         }
         
         function loadPreset(preset) {
